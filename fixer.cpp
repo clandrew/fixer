@@ -366,9 +366,7 @@ DWORD WINAPI SoundThreadProc(LPVOID)
 
     HWND hwndApp = nullptr;
 
-    // Open a waveform device for output using window callback. 
 
-    int nSeconds = 32;
     int samplesPerSecond = 111320;
 
     WAVEFORMATEX wfx =
@@ -382,11 +380,15 @@ DWORD WINAPI SoundThreadProc(LPVOID)
         0                 // cbSize
     };
 
+    HANDLE soundDonePlaying = CreateEvent(0, FALSE, FALSE, 0);
+
     if (waveOutOpen(
         (LPHWAVEOUT)&hWaveOut,
         WAVE_MAPPER,
         (LPWAVEFORMATEX)&wfx,
-        (LONG)hwndApp, 0L, CALLBACK_WINDOW))
+        (LONG)soundDonePlaying,
+        0L, 
+        CALLBACK_EVENT))
     {
         MessageBoxA(hwndApp,
             "Failed to open waveform output device.",
@@ -466,44 +468,45 @@ DWORD WINAPI SoundThreadProc(LPVOID)
         notes.push_back(118);
     }
 
-
     std::vector<char> buffer;
-    buffer.resize(samplesPerSecond * nSeconds);
     int noteLength = 22000;
     int amp = 5;
-    for (int i = 0; i < buffer.size(); ++i)
+    for (int i = 0; i < notes.size(); ++i)
     {
-        // Treat channels as interleaved.
+        int note = notes[i];
 
-        int noteIndex = i / noteLength;
-        int note = notes[noteIndex % notes.size()];
-
-        //note = 168;
-
-        byte b;
-
-        int v = i / note;
-        if (v % 2 == 0)
+        for (int j = 0; j < noteLength; ++j)
         {
-            b = 128 + amp;
-        }
-        else
-        {
-            b = 128 - amp;
-        }
+            byte b;
 
-        buffer[i] = b;
+            int v = j / note; // wave-peak length
+            if (v % 2 == 0)
+            {
+                b = 128 + amp;
+            }
+            else
+            {
+                b = 128 - amp;
+            }
+
+            buffer.push_back(b);
+        }
     }
 
-    WAVEHDR header = { buffer.data(), buffer.size(), 0, 0, 0, 0, 0, 0 };
-    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
-    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
-    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
-    waveOutClose(hWaveOut);
-
-    while (1)
+    while (true)
     {
+        ResetEvent(soundDonePlaying);
 
+        WAVEHDR header = { buffer.data(), buffer.size(), 0, 0, 0, 0, 0, 0 };
+        waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+        waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+        waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+        waveOutClose(hWaveOut);
+
+        if (WaitForSingleObject(soundDonePlaying, INFINITE) != WAIT_OBJECT_0)
+        {
+            return 0; // Error
+        }
     }
 
     return 0;
