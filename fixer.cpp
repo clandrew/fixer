@@ -27,6 +27,7 @@ ComPtr<IWICImagingFactory> g_wicImagingFactory;
 LoadedImageFile g_demoImage;
 bool g_loaded{};
 bool g_isRunning{};
+HANDLE hData = NULL;  // handle of waveform data memory 
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -34,6 +35,7 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 void OnTick();
+void InitSound();
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -201,16 +203,6 @@ LoadedImageFile TryLoadAsRaster(std::wstring fileName)
     return r;
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
@@ -278,6 +270,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
+
+   InitSound();
 
    return TRUE;
 }
@@ -355,6 +349,113 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+// Sound needs its own thread.
+
+DWORD WINAPI SoundThreadProc(LPVOID)
+{
+    HWAVEOUT    hWaveOut{};
+    HGLOBAL     hWaveHdr{};
+    LPWAVEHDR   lpWaveHdr{};
+    HMMIO       hmmio{};
+    UINT        wResult{};
+    HANDLE      hFormat{};
+    WAVEFORMAT* pFormat{};
+    DWORD       dwDataSize{};
+
+    HWND hwndApp = nullptr;
+
+    // Open a waveform device for output using window callback. 
+
+    int nSeconds = 20;
+    int samplesPerSecond = 111320;
+
+    WAVEFORMATEX wfx =
+    {
+        WAVE_FORMAT_PCM,  // wFormatTag
+        2,                // nChannels
+        samplesPerSecond,             // nSamplesPerSec
+        samplesPerSecond,             // nAvgBytesPerSec
+        2,                // nBlockAlign
+        8,                // wBitsPerSample
+        0                 // cbSize
+    };
+
+    if (waveOutOpen(
+        (LPHWAVEOUT)&hWaveOut,
+        WAVE_MAPPER,
+        (LPWAVEFORMATEX)&wfx,
+        (LONG)hwndApp, 0L, CALLBACK_WINDOW))
+    {
+        MessageBoxA(hwndApp,
+            "Failed to open waveform output device.",
+            NULL, MB_OK | MB_ICONEXCLAMATION);
+        LocalUnlock(hFormat);
+        LocalFree(hFormat);
+        mmioClose(hmmio, 0);
+        return 0;
+    }
+
+    std::vector<char> buffer;
+    buffer.resize(samplesPerSecond * nSeconds);
+
+    // Tone                 Freq
+    // 252                  288
+    // 224                  32            
+
+    int freq = 252;
+    int amp = 5;
+    for (int i = 0; i < buffer.size(); ++i)
+    {
+        // Treat channels as interleaved.
+
+        byte b;
+
+        int channel = i % 2;
+
+        if (channel == 0)
+        {
+
+            int v = i / freq;
+            if (v % 2 == 0)
+            {
+                b = 128 + amp;
+            }
+            else
+            {
+                b = 128 - amp;
+            }
+        }
+        else
+        {
+            int v = (i / freq) / 4;
+            if (v % 2 == 0)
+            {
+                b = 128 + amp;
+            }
+            else
+            {
+                b = 128 - amp;
+            }
+        }
+
+        buffer[i] = b;
+    }
+
+    WAVEHDR header = { buffer.data(), buffer.size(), 0, 0, 0, 0, 0, 0 };
+    waveOutPrepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
+    waveOutClose(hWaveOut);
+    Sleep(nSeconds * 1000);
+
+    return 0;
+}
+
+void InitSound(void)
+{
+    CreateThread(nullptr, 0, SoundThreadProc, nullptr, 0, nullptr);
 }
 
 void OnTick()

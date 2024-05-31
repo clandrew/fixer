@@ -9,9 +9,15 @@
 
 // add headers that you want to pre-compile here
 #include "framework.h"
+
+// Windows headers
 #include <d2d1_3.h>
 #include <wincodec.h>
 #include <wrl/client.h>
+#include <mmeapi.h>
+#include <mmiscapi.h>
+
+// STL
 #include <vector>
 #include <string>
 
