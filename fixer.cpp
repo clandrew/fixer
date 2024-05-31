@@ -60,9 +60,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     LARGE_INTEGER qpf;
     QueryPerformanceFrequency(&qpf);
-    unsigned long long int ticksPerFrame = qpf.QuadPart / 60;
-    unsigned long long int ticksLastFrame = 0;
-    unsigned long long int target = ticksLastFrame + ticksPerFrame;
+    long long int ticksPerFrame = qpf.QuadPart / 60;
+    long long int ticksLastFrame = 0;
+    long long int target = ticksLastFrame + ticksPerFrame;
 
     g_loaded = true;
 
@@ -223,6 +223,35 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   RECT clientRect;
+   if (!GetClientRect(hWnd, &clientRect))
+   {
+       return FALSE;
+   }
+
+   // Resize the window
+   RECT desiredClientRect{};
+   desiredClientRect.left = 100;
+   desiredClientRect.top = 100;
+   desiredClientRect.right = desiredClientRect.left + 256;
+   desiredClientRect.bottom = desiredClientRect.top + 240;
+   AdjustWindowRect(&desiredClientRect, WS_CHILD | WS_OVERLAPPEDWINDOW, TRUE); // Menu bar
+
+   int width = clientRect.right - clientRect.left;
+   int height = clientRect.bottom - clientRect.top;
+   height += GetSystemMetrics(SM_CYMENU);
+
+   MoveWindow(hWnd, 
+       desiredClientRect.left,
+       desiredClientRect.top,
+       desiredClientRect.right - desiredClientRect.left,
+       desiredClientRect.bottom - desiredClientRect.top, FALSE);
+
+   // Check client area
+   if (!GetClientRect(hWnd, &clientRect))
+   {
+       return FALSE;
+   }
 
    D2D1_FACTORY_OPTIONS factoryOptions = {};
    factoryOptions.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
@@ -231,25 +260,17 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        return FALSE;
    }
 
-   RECT clientRect;
-   if (!GetClientRect(hWnd, &clientRect))
-   {
-       return FALSE;
-   }
-   int clientWidth = clientRect.right - clientRect.left;
-   int clientHeight = clientRect.bottom - clientRect.top;
-
    D2D1_RENDER_TARGET_PROPERTIES renderTargetProperties = D2D1::RenderTargetProperties(
        D2D1_RENDER_TARGET_TYPE_DEFAULT, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED), 0, 0);
 
-   D2D1_HWND_RENDER_TARGET_PROPERTIES hwndRenderTargetProperties = D2D1::HwndRenderTargetProperties(hWnd, D2D1::SizeU(clientWidth, clientHeight));
+   D2D1_HWND_RENDER_TARGET_PROPERTIES hwndRenderTargetProperties = D2D1::HwndRenderTargetProperties(hWnd, D2D1::SizeU(256, 240));
 
    if (FAILED(g_d2dFactory->CreateHwndRenderTarget(&renderTargetProperties, &hwndRenderTargetProperties, &g_renderTarget)))
    {
        return FALSE;
    }
 
-   CoInitialize(nullptr);
+   (void)CoInitialize(nullptr);
 
    EnsureWicImagingFactory();
 
