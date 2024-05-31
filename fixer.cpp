@@ -368,16 +368,16 @@ DWORD WINAPI SoundThreadProc(LPVOID)
 
     // Open a waveform device for output using window callback. 
 
-    int nSeconds = 20;
+    int nSeconds = 32;
     int samplesPerSecond = 111320;
 
     WAVEFORMATEX wfx =
     {
         WAVE_FORMAT_PCM,  // wFormatTag
-        2,                // nChannels
+        1,                // nChannels
         samplesPerSecond,             // nSamplesPerSec
         samplesPerSecond,             // nAvgBytesPerSec
-        2,                // nBlockAlign
+        1,                // nBlockAlign
         8,                // wBitsPerSample
         0                 // cbSize
     };
@@ -397,47 +397,99 @@ DWORD WINAPI SoundThreadProc(LPVOID)
         return 0;
     }
 
+    std::vector<int> notes;
+    for (int i = 0; i < 2; ++i)
+    {
+        notes.push_back(424);
+        notes.push_back(282);
+        notes.push_back(212);
+        notes.push_back(142);
+
+        notes.push_back(424);
+        notes.push_back(302);
+        notes.push_back(212);
+        notes.push_back(152);
+
+        notes.push_back(424);
+        notes.push_back(282);
+        notes.push_back(212);
+        notes.push_back(142);
+
+        notes.push_back(404);
+        notes.push_back(262);
+        notes.push_back(202);
+        notes.push_back(132);
+    }
+    for (int i = 0; i < 2; ++i)
+    {
+        notes.push_back(382);
+        notes.push_back(252);
+        notes.push_back(192);
+        notes.push_back(126);
+
+        notes.push_back(382);
+        notes.push_back(272);
+        notes.push_back(192);
+        notes.push_back(126);
+
+        notes.push_back(382);
+        notes.push_back(252);
+        notes.push_back(192);
+        notes.push_back(126);
+
+        notes.push_back(362);
+        notes.push_back(238);
+        notes.push_back(182);
+        notes.push_back(120);
+
+    }
+    for (int i = 0; i < 4; ++i)
+    {
+        notes.push_back(342);
+        notes.push_back(222);
+        notes.push_back(168);
+        notes.push_back(112);
+
+        notes.push_back(342);
+        notes.push_back(238);
+        notes.push_back(168);
+        notes.push_back(118);
+
+        notes.push_back(342);
+        notes.push_back(248);
+        notes.push_back(168);
+        notes.push_back(126);
+
+        notes.push_back(342);
+        notes.push_back(238);
+        notes.push_back(168);
+        notes.push_back(118);
+    }
+
+
     std::vector<char> buffer;
     buffer.resize(samplesPerSecond * nSeconds);
-
-    // Tone                 Freq
-    // 252                  288
-    // 224                  32            
-
-    int freq = 252;
+    int noteLength = 22000;
     int amp = 5;
     for (int i = 0; i < buffer.size(); ++i)
     {
         // Treat channels as interleaved.
 
+        int noteIndex = i / noteLength;
+        int note = notes[noteIndex % notes.size()];
+
+        //note = 168;
+
         byte b;
 
-        int channel = i % 2;
-
-        if (channel == 0)
+        int v = i / note;
+        if (v % 2 == 0)
         {
-
-            int v = i / freq;
-            if (v % 2 == 0)
-            {
-                b = 128 + amp;
-            }
-            else
-            {
-                b = 128 - amp;
-            }
+            b = 128 + amp;
         }
         else
         {
-            int v = (i / freq) / 4;
-            if (v % 2 == 0)
-            {
-                b = 128 + amp;
-            }
-            else
-            {
-                b = 128 - amp;
-            }
+            b = 128 - amp;
         }
 
         buffer[i] = b;
@@ -448,7 +500,11 @@ DWORD WINAPI SoundThreadProc(LPVOID)
     waveOutWrite(hWaveOut, &header, sizeof(WAVEHDR));
     waveOutUnprepareHeader(hWaveOut, &header, sizeof(WAVEHDR));
     waveOutClose(hWaveOut);
-    Sleep(nSeconds * 1000);
+
+    while (1)
+    {
+
+    }
 
     return 0;
 }
