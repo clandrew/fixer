@@ -25,6 +25,15 @@ ComPtr<ID2D1Factory7> g_d2dFactory;
 ComPtr<ID2D1HwndRenderTarget> g_renderTarget;
 ComPtr<IWICImagingFactory> g_wicImagingFactory;
 LoadedImageFile g_demoImage;
+
+LoadedImageFile g_prompt;
+bool g_promptBlink{};
+int g_promptBlinkFrameCounter{};
+
+LoadedImageFile g_eyes;
+int g_eyesFrame{};
+int g_eyesFrameCounter{};
+
 bool g_loaded{};
 bool g_isRunning{};
 HANDLE hData = NULL;  // handle of waveform data memory 
@@ -269,6 +278,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    EnsureWicImagingFactory();
 
    g_demoImage = TryLoadAsRaster(L"local/reference.png");
+   g_prompt = TryLoadAsRaster(L"local/a.png");
+   g_eyes = TryLoadAsRaster(L"local/eyes.png");
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
@@ -309,6 +320,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+    case WM_KEYUP:
+    {
+        if (wParam == 65)
+        {
+            // Exit
+            g_isRunning = false;
+            PostQuitMessage(0);
+        }
+        break;
+    }
     case WM_PAINT:
         {
             if (!g_loaded)
@@ -319,7 +340,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             g_renderTarget->BeginDraw();
             g_renderTarget->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
             g_renderTarget->Clear(D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f));
-            g_renderTarget->DrawBitmap(g_demoImage.Bitmap.Get(), nullptr, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, nullptr);
+            g_renderTarget->DrawBitmap(g_demoImage.Bitmap.Get(), nullptr, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, nullptr);
+
+            if (g_promptBlink)
+            {
+                float destX = 192;
+                float destY = 96;
+                D2D1_RECT_F destRect{ destX, destY, destX +8, destY +8 };
+                g_renderTarget->DrawBitmap(g_prompt.Bitmap.Get(), &destRect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, nullptr);
+            }
+            {
+                float destX = 53;
+                float destY = 66;
+                D2D1_RECT_F destRect{ destX, destY, destX + 21, destY + 4 };
+                D2D1_RECT_F srcRect{ 0, 0 + (g_eyesFrame * 4), 21, 4 + (g_eyesFrame * 4) };
+                g_renderTarget->DrawBitmap(g_eyes.Bitmap.Get(), &destRect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR, &srcRect);
+            }
+
             g_renderTarget->EndDraw();
         }
         break;
@@ -521,4 +558,25 @@ void InitSound(void)
 
 void OnTick()
 {
+    g_promptBlinkFrameCounter++;
+    if (g_promptBlinkFrameCounter > 15)
+    {
+        g_promptBlinkFrameCounter = 0;
+        g_promptBlink = !g_promptBlink;
+    }
+
+    g_eyesFrameCounter++;
+    if (g_eyesFrameCounter > 205)
+    {
+        g_eyesFrameCounter = 0;
+        g_eyesFrame = 0;
+    }
+    else if (g_eyesFrameCounter > 203)
+    {
+        g_eyesFrame = 2;
+    }
+    else if (g_eyesFrameCounter > 200)
+    {
+        g_eyesFrame = 1;
+    }
 }
