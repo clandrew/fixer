@@ -1,6 +1,6 @@
 # Fixer Midi Demo
 
-This is an experiment with the low level wave API in Win32, for example [waveOutOpen](https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutopen). 
+This is an experiment with the low level wave sound API in Win32, for example [waveOutOpen](https://learn.microsoft.com/en-us/windows/win32/api/mmeapi/nf-mmeapi-waveoutopen). 
 
 It's an homage to a NES game Golgo 13: Top Secret Episode.
 
