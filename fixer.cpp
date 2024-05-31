@@ -221,12 +221,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
        return FALSE;
    }
 
+   int scalingFactor = 3;
+
    // Resize the window
    RECT desiredClientRect{};
    desiredClientRect.left = 100;
    desiredClientRect.top = 100;
-   desiredClientRect.right = desiredClientRect.left + 256;
-   desiredClientRect.bottom = desiredClientRect.top + 240;
+   desiredClientRect.right = desiredClientRect.left + (256 * scalingFactor);
+   desiredClientRect.bottom = desiredClientRect.top + (240 * scalingFactor);
    AdjustWindowRect(&desiredClientRect, WS_CHILD | WS_OVERLAPPEDWINDOW, TRUE); // Menu bar
 
    int width = clientRect.right - clientRect.left;
